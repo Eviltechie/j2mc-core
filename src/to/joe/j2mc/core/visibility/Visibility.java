@@ -3,12 +3,12 @@ package to.joe.j2mc.core.visibility;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.kitteh.vanish.VanishPerms;
 import org.kitteh.vanish.staticaccess.VanishNoPacket;
 import org.kitteh.vanish.staticaccess.VanishNotLoadedException;
 
@@ -25,19 +25,18 @@ public class Visibility {
      * @return
      */
     public List<Player> getOnlinePlayers(Player searcher) {
-        final List<Player> players = Arrays.asList(J2MC_Manager.getCore().getServer().getOnlinePlayers());
-        if ((searcher != null) && !VanishPerms.canSeeAll(searcher)) {
-            for (final Player player : J2MC_Manager.getCore().getServer().getOnlinePlayers()) {
-                try {
-                    if ((player != null) && VanishNoPacket.isVanished(player.getName())) {
-                        players.remove(player);
-                    }
-                } catch (final VanishNotLoadedException e) {
-                    J2MC_Manager.getCore().buggerAll("VanishNoPacket DIED");
-                }
+        List<Player> players = Arrays.asList(J2MC_Manager.getCore().getServer().getOnlinePlayers());
+        if (searcher == null) {
+            return players;
+        } else {
+            Iterator<Player> playerIterator = players.iterator();
+            while (playerIterator.hasNext()) {
+                Player p = playerIterator.next();
+                if (!searcher.canSee(p) && !searcher.equals(p))
+                    playerIterator.remove();
             }
+            return players;
         }
-        return players;
     }
     
     /**
@@ -73,19 +72,13 @@ public class Visibility {
                 }
             }
         }
-        final boolean hidingVanished = (searcher != null) && (searcher instanceof Player) && !VanishPerms.canSeeAll((Player) searcher);
         for (final Player player : J2MC_Manager.getCore().getServer().getOnlinePlayers()) {
-            try {
-                if (!toIgnoreSet.contains(player.getName()) && (!hidingVanished || !VanishNoPacket.isVanished(player.getName()))) {
-                    if (player.getName().toLowerCase().contains(target.toLowerCase())) {
-                        players.add(player);
-                    }
-                    if (player.getName().equalsIgnoreCase(target)) {
-                        return player;
-                    }
-                }
-            } catch (final VanishNotLoadedException e) {
-                J2MC_Manager.getCore().buggerAll("VanishNoPacket DIED");
+            boolean canSee = !(searcher instanceof Player) | ((Player)searcher).canSee(player) | ((Player)searcher).equals(player);
+            if (!toIgnoreSet.contains(player.getName()) && canSee) {
+                players.add(player);
+            }
+            if (player.getName().equalsIgnoreCase(target) && !toIgnoreSet.contains(player.getName())) {
+                return player;
             }
         }
         if (players.size() > 1) {
